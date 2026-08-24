@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BrickTutor AI</title>
+<style>
+  :root{
+    --clay:#A8402E;
+    --clay-dark:#7C2D1F;
+    --mortar:#2B2925;
+    --mortar-light:#413E38;
+    --sand:#EDE6D8;
+    --safety:#E8B93B;
+    --line:#57534A;
+    --ok:#6B8F5E;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:var(--mortar);
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    color:var(--sand);
+    overscroll-behavior:none;
+  }
+  .app{
+    display:flex;flex-direction:column;
+    height:100vh;height:100dvh;
+    max-width:560px;margin:0 auto;
+    background:var(--mortar);
+    position:relative;
+  }
+  header{
+    position:relative;
+    padding:18px 18px 16px;
+    background:var(--clay-dark);
+    overflow:hidden;
+    flex-shrink:0;
+    border-bottom:3px solid var(--mortar);
+  }
+  .courses{
+    position:absolute;inset:0;
+    opacity:0.16;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 78px, var(--mortar) 78px 82px),
+      repeating-linear-gradient(0deg, transparent 0 26px, var(--mortar) 26px 30px);
+  }
+  .courses::before{
+    content:"";
+    position:absolute;inset:0;
+    background-image: repeating-linear-gradient(90deg, transparent 0 39px, var(--mortar) 39px 43px);
+    background-position: 20px 30px;
+    background-size: 78px 60px;
+  }
+  .head-row{
+    position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .mark{
+    width:34px;height:34px;flex-shrink:0;
+    display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;
+  }
+  .mark span{background:var(--safety);border-radius:2px;}
+  .mark span:nth-child(2){background:var(--sand);}
+  .mark span:nth-child(3){background:var(--sand);}
+  .mark span:nth-child(4){background:var(--safety);}
+  .brand h1{margin:0;font-size:1.15rem;letter-spacing:0.02em;font-weight:800;color:var(--sand);}
+  .brand small{display:block;font-size:0.68rem;color:#D8CDBB;font-weight:500;letter-spacing:0.03em;text-transform:uppercase;}
+  .status{font-size:0.62rem;font-weight:700;letter-spacing:0.06em;color:var(--mortar-light);background:var(--ok);padding:4px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap;}
+  .subline{position:relative;z-index:1;margin-top:10px;font-size:0.78rem;color:#D8CDBB;line-height:1.4;}
+  .chat{flex:1;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;}
+  .msg{max-width:86%;line-height:1.45;font-size:0.92rem;}
+  .msg.bot{align-self:flex-start;background:var(--mortar-light);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:10px 13px;white-space:pre-wrap;}
+  .msg.bot .label{display:block;font-size:0.62rem;font-weight:800;letter-spacing:0.08em;color:var(--safety);text-transform:uppercase;margin-bottom:4px;}
+  .msg.user{align-self:flex-end;background:var(--clay);color:#fff;border-radius:14px 4px 14px 14px;padding:10px 13px;white-space:pre-wrap;}
+  .msg.system-note{align-self:center;max-width:95%;text-align:center;font-size:0.72rem;color:#B8AD97;padding:6px 10px;}
+  .thinking{align-self:flex-start;display:flex;gap:5px;align-items:center;padding:10px 13px;background:var(--mortar-light);border:1px solid var(--line);border-radius:4px 14px 14px 14px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--safety);animation:bounce 1.1s infinite ease-in-out;}
+  .dot:nth-child(2){animation-delay:0.15s;}
+  .dot:nth-child(3){animation-delay:0.3s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:0.5;}30%{transform:translateY(-4px);opacity:1;}}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 14px 10px;flex-shrink:0;-webkit-overflow-scrolling:touch;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;font-size:0.76rem;font-weight:600;background:transparent;border:1px solid var(--line);color:var(--sand);padding:7px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;}
+  .chip:active{background:var(--clay);border-color:var(--clay);}
+  .inputbar{flex-shrink:0;display:flex;gap:8px;align-items:flex-end;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:var(--mortar-light);border-top:1px solid var(--line);}
+  textarea{flex:1;resize:none;background:var(--mortar);border:1px solid var(--line);border-radius:14px;color:var(--sand);padding:10px 12px;font-size:0.92rem;font-family:inherit;max-height:110px;line-height:1.35;}
+  textarea:focus{outline:2px solid var(--safety);outline-offset:1px;}
+  textarea::placeholder{color:#8A8375;}
+  .send{flex-shrink:0;width:42px;height:42px;border-radius:50%;background:var(--clay);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .send:disabled{opacity:0.4;}
+  .send svg{width:19px;height:19px;}
+  ::-webkit-scrollbar{width:5px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="courses"></div>
+    <div class="head-row">
+      <div class="brand">
+        <div class="mark"><span></span><span></span><span></span><span></span></div>
+        <div>
+          <h1>BrickTutor AI</h1>
+          <small>CCA 2123 · Kerja Bata &amp; Pintu/Tingkap</small>
+        </div>
+      </div>
+      <span class="status">Live</span>
+    </div>
+    <p class="subline">Tanya apa-apa soalan berkaitan kerja bata, kerangka pintu, panel pintu, atau pemeriksaan kerja bata — jawapan berdasarkan nota rasmi kursus anda.</p>
+  </header>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="chips" id="chips">
+    <button class="chip" data-q="Apa jenis kerangka pintu kayu yang ada?">Jenis kerangka pintu</button>
+    <button class="chip" data-q="Macam mana nak pasang engsel pintu dengan betul?">Pasang engsel</button>
+    <button class="chip" data-q="Apa kriteria pemeriksaan kerja bata?">Kriteria periksa bata</button>
+    <button class="chip" data-q="Kenapa kerangka pintu perlu diperiksa kepugakannya?">Kepugakan kerangka</button>
+    <button class="chip" data-q="Apa alat yang digunakan untuk periksa kerja bata?">Alat pemeriksaan</button>
+  </div>
+
+  <div class="inputbar">
+    <textarea id="input" rows="1" placeholder="Taip soalan awak di sini..."></textarea>
+    <button class="send" id="sendBtn" aria-label="Hantar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const chatEl = document.getElementById('chat');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const chipsEl = document.getElementById('chips');
+
+let history = [];
+
+function addMsg(role, text){
+  const div = document.createElement('div');
+  if(role === 'bot'){
+    div.className = 'msg bot';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = 'BrickTutor AI';
+    div.appendChild(label);
+    const body = document.createElement('span');
+    body.textContent = text;
+    div.appendChild(body);
+  } else {
+    div.className = 'msg user';
+    div.textContent = text;
+  }
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function addSystemNote(text){
+  const div = document.createElement('div');
+  div.className = 'msg system-note';
+  div.textContent = text;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function showThinking(){
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.id = 'thinkingIndicator';
+  div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+function hideThinking(){
+  const el = document.getElementById('thinkingIndicator');
+  if(el) el.remove();
+}
+
+async function sendMessage(text){
+  if(!text || !text.trim()) return;
+  addMsg('user', text);
+  history.push({role:'user', content:text});
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  sendBtn.disabled = true;
+  showThinking();
+
+  try{
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history })
+    });
+
+    const data = await response.json();
+    hideThinking();
+
+    if(!response.ok || data.error){
+      addMsg('bot', 'Ralat: ' + (data.error || ('HTTP ' + response.status)));
+      return;
+    }
+
+    const reply = data.reply || 'Maaf, tiada jawapan diterima.';
+    addMsg('bot', reply);
+    history.push({role:'assistant', content:reply});
+  } catch(err){
+    hideThinking();
+    console.error('BrickTutor error:', err);
+    addMsg('bot', 'Ralat sambungan: ' + (err && err.message ? err.message : 'tidak diketahui'));
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+inputEl.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendMessage(inputEl.value);
+  }
+});
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 110) + 'px';
+});
+
+chipsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip');
+  if(btn) sendMessage(btn.dataset.q);
+});
+
+addMsg('bot', 'Selamat datang! Saya BrickTutor AI 🧱\n\nSaya boleh bantu jawab soalan berkaitan:\n• Memasang Kerangka Pintu\n• Memasang Panel Pintu\n• Memeriksa Kerja Bata\n\nJawapan saya berdasarkan nota rasmi kursus CCA 2123 sahaja. Boleh tanya terus, atau pilih topik pantas di bawah.');
+addSystemNote('Nota: Untuk topik Kerangka Tingkap, Panel Tingkap & Pemeriksaan Pemasangan Pintu/Tingkap, sila rujuk pensyarah — nota tersebut belum dimuat naik ke dalam sistem ini.');
+</script>
+</body>
+</html>
