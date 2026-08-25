@@ -365,12 +365,15 @@ export default async function handler(req, res) {
       parts: [{ text: m.content }]
     }));
 
-    const model = 'gemini-2.0-flash';
+    const model = 'gemini-3.6-flash';
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: SYSTEM_PROMPT }]
