@@ -1,6 +1,6 @@
 // api/chat.js
-// Serverless function (Vercel) - simpan ANTHROPIC_API_KEY sebagai Environment Variable
-// di dashboard Vercel, JANGAN letak terus dalam kod ini.
+// Vercel Serverless Function - guna Google Gemini API (percuma dengan had)
+// Simpan GEMINI_API_KEY sebagai Environment Variable di Vercel.
 
 const KNOWLEDGE_BASE = `
 === NOTA 2/7: MEMASANG KERANGKA PINTU (CCA 2123) ===
@@ -330,8 +330,8 @@ pelajar rujuk pensyarah untuk pengesahan/penilaian rasmi.
 ${KNOWLEDGE_BASE}
 === TAMAT KNOWLEDGE BASE ===`;
 
+
 export default async function handler(req, res) {
-  // Benarkan CORS supaya frontend (mana-mana asal) boleh panggil endpoint ini
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -351,41 +351,62 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Field "messages" diperlukan (array)' });
     }
 
-    // Hadkan panjang sejarah perbualan supaya tidak terlalu besar
     const trimmedMessages = messages.slice(-20);
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY belum ditetapkan di server' });
+      return res.status(500).json({ error: 'GEMINI_API_KEY belum ditetapkan di server' });
     }
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: SYSTEM_PROMPT,
-        messages: trimmedMessages
-      })
-    });
+    // Tukar format mesej dari {role:'user'|'assistant', content} kepada format Gemini
+    // {role:'user'|'model', parts:[{text}]}
+    const geminiContents = trimmedMessages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
 
-    const data = await anthropicRes.json();
+    const model = 'gemini-2.0-flash';
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+          },
+          contents: geminiContents,
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.4
+          }
+        })
+      }
+    );
 
-    if (!anthropicRes.ok) {
-      console.error('Anthropic API error:', data);
-      return res.status(anthropicRes.status).json({ error: data?.error?.message || 'Ralat API Anthropic' });
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      console.error('Gemini API error:', data);
+      return res.status(geminiRes.status).json({ error: (data && data.error && data.error.message) || 'Ralat API Gemini' });
     }
 
-    const reply = Array.isArray(data.content)
-      ? data.content.map(b => b.text || '').filter(Boolean).join('\n')
-      : '';
+    let reply = '';
+    try {
+      const candidate = data.candidates && data.candidates[0];
+      const parts = candidate && candidate.content && candidate.content.parts;
+      if (Array.isArray(parts)) {
+        reply = parts.map(p => p.text || '').filter(Boolean).join('\n');
+      }
+      // Jika model kena blok oleh safety filter atau ada finishReason lain
+      if (!reply && candidate && candidate.finishReason) {
+        console.warn('Gemini finishReason:', candidate.finishReason, data);
+      }
+    } catch (e) {
+      console.error('Gagal parse respons Gemini:', e, data);
+    }
 
-    return res.status(200).json({ reply: reply || 'Maaf, tiada jawapan diterima.' });
+    return res.status(200).json({ reply: reply || 'Maaf, tiada jawapan diterima daripada model.' });
 
   } catch (err) {
     console.error('Server error:', err);
